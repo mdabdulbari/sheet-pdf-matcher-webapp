@@ -1,4 +1,6 @@
 import "./globals.css";
+import "handsontable/styles/handsontable.min.css";
+import "handsontable/styles/ht-theme-main.min.css";
 
 export const metadata = {
 	title: "Ledger Match",
