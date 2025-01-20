@@ -10,7 +10,7 @@ const HandsontableWrapper = ({ data, columns }) => {
 		if (tableRef.current) {
 			hotInstance.current = new Handsontable(tableRef.current, {
 				data,
-				colHeaders: true,
+				colHeaders: columns.map((col) => col.name),
 				rowHeaders: true,
 				columns,
 				licenseKey: "non-commercial-and-evaluation",

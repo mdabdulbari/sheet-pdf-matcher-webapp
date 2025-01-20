@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 
-export const parseExcelFile = async (file) => {
+export const parseSpreadsheet = async (file) => {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
 
@@ -31,7 +31,7 @@ export const parseExcelFile = async (file) => {
 				resolve({ cols, formattedRows });
 			} catch (error) {
 				reject(
-					"Failed to parse the Excel file. Please check its format."
+					"Failed to parse the Spreadsheet. Please check its format."
 				);
 			}
 		};

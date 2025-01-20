@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Box, Grid2 as Grid, Paper } from "@mui/material";
-import ExcelViewer from "./components/SpreadsheetViewer";
+import SpreadsheetViewer from "./components/SpreadsheetViewer";
 import PdfViewer from "./components/PdfViewer";
 import Header from "./components/Header";
 
@@ -30,7 +30,7 @@ const FileUploadPage = () => {
 							boxSizing: "border-box",
 						}}
 					>
-						<ExcelViewer
+						<SpreadsheetViewer
 							rows={rows}
 							setRows={setRows}
 							columns={columns}

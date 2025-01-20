@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Button, Typography } from "@mui/material";
-import { parseExcelFile } from "@/utils/spreadsheetUtils";
+import { parseSpreadsheet } from "@/utils/spreadsheetUtils";
 import HandsontableWrapper from "./Table/HandsontableWrapper";
 
 const SpreadsheetViewer = () => {
@@ -18,7 +18,7 @@ const SpreadsheetViewer = () => {
 	};
 
 	const handleFileReading = (file) => {
-		parseExcelFile(file)
+		parseSpreadsheet(file)
 			.then(({ cols, formattedRows }) => {
 				updateColumns(cols);
 				updateRows(formattedRows);
@@ -38,31 +38,28 @@ const SpreadsheetViewer = () => {
 	};
 
 	const createHandsontableData = (columns, rows) => {
-		// Ensure columns and rows are defined
 		if (!columns || !rows) return [];
 
-		// Transform rows into a Handsontable-compatible 2D array
 		return rows.map((row) => columns.map((col) => row[col.key || col]));
 	};
 
-	// Example usage
 	const data = createHandsontableData(columns, rows);
 
 	return (
 		<>
 			{columns.length > 0 && rows.length > 0 ? (
-				<HandsontableWrapper data={data} />
+				<HandsontableWrapper data={data} columns={columns} />
 			) : (
 				<>
 					<Typography variant="h6" gutterBottom>
-						Upload Excel Sheet
+						Upload Spreadsheet
 					</Typography>
 					<Button
 						variant="contained"
 						component="label"
 						sx={{ mb: 2 }}
 					>
-						Choose Excel File
+						Choose Spreadhseet
 						<input
 							type="file"
 							accept=".xls,.xlsx"
