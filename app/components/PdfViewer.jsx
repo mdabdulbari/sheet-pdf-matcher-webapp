@@ -99,20 +99,50 @@ const handlePdfUpload = async (e) => {
   }
 };
 
-  const handleSearch = () => {
-    if (searchTerm.trim()) {
-      console.log(`Searching for: ${searchTerm}`);
-      if (parsedContent) {
-        const occurrences =
-          parsedContent.match(new RegExp(searchTerm, "gi")) || [];
-        console.log(
-          `Found ${occurrences.length} occurrence(s) of "${searchTerm}"`
-        );
-      } else {
-        console.log("No parsed content to search within.");
-      }
-    }
+//   const handleSearch = () => {
+//     if (searchTerm.trim()) {
+//       console.log(`Searching for: ${searchTerm}`);
+//       if (parsedContent) {
+//         const occurrences =
+//           parsedContent.match(new RegExp(searchTerm, "gi")) || [];
+//         console.log(
+//           `Found ${occurrences.length} occurrence(s) of "${searchTerm}"`
+//         );
+//       } else {
+//         console.log("No parsed content to search within.");
+//       }
+//     }
+//   };
+
+const handleSearch = () => {
+	if (searchTerm.trim()) {
+	  console.log(`Searching for: ${searchTerm}`);
+  
+	  if (parsedContent && Array.isArray(parsedContent)) {
+		let totalOccurrences = 0;
+  
+		parsedContent.forEach((page) => {
+		  console.log(`Searching on Page ${page.page}...`);
+  
+		  page.table.forEach((row, rowIndex) => {
+			row.forEach((cell, columnIndex) => {
+			  if (cell.toLowerCase().includes(searchTerm.toLowerCase())) {
+				totalOccurrences++;
+				console.log(
+				  `Found "${searchTerm}" on Page ${page.page}, Row ${rowIndex + 1}, Column ${columnIndex + 1}`
+				);
+			  }
+			});
+		  });
+		});
+  
+		console.log(`Found ${totalOccurrences} occurrence(s) of "${searchTerm}"`);
+	  } else {
+		console.log("No parsed content to search within.");
+	  }
+	}
   };
+  
   return (
     <>
       {pdfFile ? (
