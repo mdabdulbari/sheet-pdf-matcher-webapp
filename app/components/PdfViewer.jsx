@@ -3,31 +3,101 @@ import React, { useState } from "react";
 import { Worker, Viewer } from "@react-pdf-viewer/core";
 import { getDocument } from "pdfjs-dist";
 import "@react-pdf-viewer/core/lib/styles/index.css";
-import { Button, TextField, Typography, Box } from "@mui/material";
+import { Button, TextField, Typography } from "@mui/material";
 
 const PdfViewer = ({ pdfFile, setPdfFile }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [parsedContent, setParsedContent] = useState(null);
 
-  const handlePdfUpload = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const fileUrl = URL.createObjectURL(file);
-      setPdfFile(fileUrl);
 
-      // Parse the PDF and log its content
-      const pdf = await getDocument(fileUrl).promise;
-      let fullText = "";
-      for (let i = 0; i < pdf.numPages; i++) {
-        const page = await pdf.getPage(i + 1);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map((item) => item.str).join(" ");
-        fullText += `Page ${i + 1}: ${pageText}\n`;
-      }
-      setParsedContent(fullText);
-      console.log("Parsed PDF Content:\n", fullText);
+//   // Text Extraction
+//   const handlePdfUpload = async (e) => {
+//     const file = e.target.files[0];
+//     if (file) {
+//       const fileUrl = URL.createObjectURL(file);
+//       setPdfFile(fileUrl);
+
+//       // Parse the PDF and log its content
+//       const pdf = await getDocument(fileUrl).promise;
+//       let fullText = "";
+
+//       for (let i = 0; i < pdf.numPages; i++) {
+//         const page = await pdf.getPage(i + 1);
+//         const textContent = await page.getTextContent();
+
+//         // Group text items by their Y-coordinate (line by line)
+//         const lines = {};
+//         textContent.items.forEach((item) => {
+//           const y = item.transform[5]; // Y-coordinate
+//           if (!lines[y]) {
+//             lines[y] = [];
+//           }
+//           lines[y].push(item.str);
+//         });
+
+//         // Convert the lines object into an array sorted by Y-coordinate
+//         const sortedLines = Object.keys(lines)
+//           .sort((a, b) => b - a) // Sort lines by Y-coordinate descending (top to bottom)
+//           .map((y) => lines[y].join(" ")); // Join all items in the same line
+
+//         // Combine all lines for the current page
+//         fullText += `Page ${i + 1}:\n${sortedLines.join("\n")}\n\n`;
+//       }
+
+//       setParsedContent(fullText);
+//       console.log("Parsed PDF Content Line by Line:\n", fullText);
+//     }
+//   };
+
+
+// Table Array Extraction line by line 
+const handlePdfUpload = async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const fileUrl = URL.createObjectURL(file);
+    setPdfFile(fileUrl);
+
+    // Parse the PDF
+    const pdf = await getDocument(fileUrl).promise;
+    let extractedTables = [];
+
+    for (let i = 0; i < pdf.numPages; i++) {
+      const page = await pdf.getPage(i + 1);
+      const textContent = await page.getTextContent();
+
+      // Group items into rows by their Y-coordinate
+      const rows = {};
+      textContent.items.forEach((item) => {
+        const y = item.transform[5]; // Y-coordinate
+        if (!rows[y]) {
+          rows[y] = [];
+        }
+        rows[y].push(item);
+      });
+
+      // Sort rows by Y-coordinate (top to bottom)
+      const sortedRows = Object.keys(rows)
+        .sort((a, b) => b - a)
+        .map((y) => rows[y]);
+
+      // For each row, sort items by X-coordinate (left to right)
+      const table = sortedRows.map((rowItems) => {
+        return rowItems
+          .sort((a, b) => a.transform[4] - b.transform[4]) // Sort by X-coordinate
+          .map((item) => item.str); // Extract text
+      });
+
+      extractedTables.push({
+        page: i + 1,
+        table,
+      });
     }
-  };
+
+    // Log and use the extracted table data
+    console.log("Extracted Tables:", extractedTables);
+    setParsedContent(extractedTables);
+  }
+};
 
   const handleSearch = () => {
     if (searchTerm.trim()) {
