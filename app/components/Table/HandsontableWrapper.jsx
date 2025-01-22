@@ -1,27 +1,66 @@
 import React, { useRef, useEffect } from "react";
 import Handsontable from "handsontable";
 import "handsontable/dist/handsontable.full.css";
+import _ from "lodash";
 
-const HandsontableWrapper = ({ data }) => {
+const HandsontableWrapper = ({ data, setHoverRowId }) => {
 	const tableRef = useRef(null);
 	const hotInstance = useRef(null);
 
+	const debouncedHover = _.debounce((event, coords, TD) => {
+		if (coords.row >= 0) {
+			const rowIndex = coords.row;
+			const instance = hotInstance.current;
+
+			const rowData = instance.getDataAtRow(rowIndex);
+
+			instance.getDataAtRow(rowIndex).forEach((_, colIndex) => {
+				const cell = instance.getCell(rowIndex, colIndex);
+				if (cell) {
+					cell.style.backgroundColor = "#f0f8ff";
+					setHoverRowId(rowData[0]);
+				}
+			});
+		}
+	}, 100);
+
 	useEffect(() => {
 		if (tableRef.current) {
-			const filteredData = data.map((row) => {
-				const { id, ...rest } = row;
-				return rest;
-			});
+			const onHoverOut = (event, coords) => {
+				if (coords.row >= 0) {
+					const rowIndex = coords.row;
+					const instance = hotInstance.current;
+
+					// Add a delay of 100ms before resetting the background color
+					setTimeout(() => {
+						instance
+							.getDataAtRow(rowIndex)
+							.forEach((_, colIndex) => {
+								const cell = instance.getCell(
+									rowIndex,
+									colIndex
+								);
+								if (cell) {
+									cell.style.backgroundColor = ""; // Reset the background color
+								}
+							});
+					}, 100); // 100ms delay
+				}
+			};
+
 			hotInstance.current = new Handsontable(tableRef.current, {
-				data: filteredData,
-				colHeaders: Object.keys(filteredData[0]),
+				data: data,
+				colHeaders: Object.keys(data[0]),
 				rowHeaders: true,
 				licenseKey: "non-commercial-and-evaluation",
+				afterOnCellMouseOver: debouncedHover,
+				afterOnCellMouseOut: onHoverOut,
 			});
 		}
 
 		return () => {
 			hotInstance.current?.destroy();
+			debouncedHover.cancel();
 		};
 	}, [data]);
 

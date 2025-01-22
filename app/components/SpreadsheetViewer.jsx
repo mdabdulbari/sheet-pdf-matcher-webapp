@@ -4,7 +4,11 @@ import { Button, Typography } from "@mui/material";
 import { parseSpreadsheet } from "@/utils/spreadsheetUtils";
 import HandsontableWrapper from "./Table/HandsontableWrapper";
 
-const SpreadsheetViewer = ({ spreadsheetData, setSpreadsheetData }) => {
+const SpreadsheetViewer = ({
+	spreadsheetData,
+	setSpreadsheetData,
+	setHoverRowId,
+}) => {
 	const handleFileSelection = (e) => {
 		const file = e.target.files[0];
 		if (file) {
@@ -32,7 +36,10 @@ const SpreadsheetViewer = ({ spreadsheetData, setSpreadsheetData }) => {
 	return (
 		<>
 			{spreadsheetData.length > 0 ? (
-				<HandsontableWrapper data={spreadsheetData} />
+				<HandsontableWrapper
+					data={spreadsheetData}
+					setHoverRowId={setHoverRowId}
+				/>
 			) : (
 				<>
 					<Typography variant="h6" gutterBottom>

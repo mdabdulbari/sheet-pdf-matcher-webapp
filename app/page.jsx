@@ -4,15 +4,24 @@ import { Box, Grid2 as Grid, Paper } from "@mui/material";
 import SpreadsheetViewer from "./components/SpreadsheetViewer";
 import PdfViewer from "./components/PdfViewer";
 import Header from "./components/Header";
+import { normalizeValue } from "@/utils/helpers";
 
 const FileUploadPage = () => {
 	const [spreadsheetData, setSpreadsheetData] = useState([]);
 	const [pdfData, setPdfData] = useState(null);
 	const [matchedData, setMatchedData] = useState(null);
-
+	const [hoverRowId, setHoverRowId] = useState(null);
 	const [searchTerm, setSearchTerm] = useState("");
 
-	const normalizeValue = (value) => Math.floor(value);
+	const normalizeNumber = (value) => Math.floor(value);
+
+	useEffect(() => {
+		if (hoverRowId && matchedData) {
+			const matchedRow = matchedData.find((row) => row.id === hoverRowId);
+			const description = normalizeValue(matchedRow.pdfData.description);
+			setSearchTerm(description);
+		}
+	}, [hoverRowId]);
 
 	// Function to parse values as numbers
 	const parseToNumber = (value) => {
@@ -23,9 +32,10 @@ const FileUploadPage = () => {
 
 	// Function to compare balance values
 	const compareBalances = (spreadsheetBalance, pdfBalance) => {
-		const normalizedBalanceSpreadsheet = normalizeValue(spreadsheetBalance);
+		const normalizedBalanceSpreadsheet =
+			normalizeNumber(spreadsheetBalance);
 		const normalizedBalancePdf = pdfBalance
-			? normalizeValue(parseToNumber(pdfBalance))
+			? normalizeNumber(parseToNumber(pdfBalance))
 			: null;
 		return (
 			normalizedBalanceSpreadsheet === normalizedBalancePdf &&
@@ -39,13 +49,13 @@ const FileUploadPage = () => {
 		spreadsheetDebit,
 		pdfCredit
 	) => {
-		const normalizedCreditSpreadsheet = normalizeValue(
+		const normalizedCreditSpreadsheet = normalizeNumber(
 			spreadsheetCredit || 0
 		);
-		const normalizedDebitSpreadsheet = normalizeValue(
+		const normalizedDebitSpreadsheet = normalizeNumber(
 			spreadsheetDebit || 0
 		);
-		const normalizedCreditPdf = normalizeValue(
+		const normalizedCreditPdf = normalizeNumber(
 			parseToNumber(pdfCredit || 0)
 		);
 
@@ -59,21 +69,34 @@ const FileUploadPage = () => {
 
 	// Function to find matched data based on comparison functions
 	const findMatchedData = (spreadsheetData, pdfData) => {
-		return spreadsheetData.filter((spreadsheetRecord) => {
-			return pdfData.some((pdfRecord) => {
-				const balanceMatch = compareBalances(
-					spreadsheetRecord.balance,
-					pdfRecord.balance
-				);
-				const creditDebitMatch = compareCreditsDebits(
-					spreadsheetRecord.Credits,
-					spreadsheetRecord.Debits,
-					pdfRecord.credit
-				);
+		return spreadsheetData
+			.map((spreadsheetRecord) => {
+				// Find a matching pdfRecord based on your conditions
+				const matchedPdfRecord = pdfData.find((pdfRecord) => {
+					const balanceMatch = compareBalances(
+						spreadsheetRecord.balance,
+						pdfRecord.balance
+					);
+					const creditDebitMatch = compareCreditsDebits(
+						spreadsheetRecord.Credits,
+						spreadsheetRecord.Debits,
+						pdfRecord.credit
+					);
+					return balanceMatch || creditDebitMatch;
+				});
 
-				return balanceMatch || creditDebitMatch;
-			});
-		});
+				// If a match is found, return the combined object
+				if (matchedPdfRecord) {
+					return {
+						...spreadsheetRecord,
+						pdfData: { ...matchedPdfRecord },
+					};
+				}
+
+				// If no match is found, return null (so it can be filtered out)
+				return null;
+			})
+			.filter(Boolean); // Filter out null values, keeping only matched records
 	};
 
 	// Main useEffect hook
@@ -109,6 +132,7 @@ const FileUploadPage = () => {
 						<SpreadsheetViewer
 							spreadsheetData={spreadsheetData}
 							setSpreadsheetData={setSpreadsheetData}
+							setHoverRowId={setHoverRowId}
 						/>
 					</Paper>
 				</Grid>
