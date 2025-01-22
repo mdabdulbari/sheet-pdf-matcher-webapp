@@ -18,6 +18,7 @@
     "handsontable": "^15.0.0",
     "lodash": "^4.17.21",
     "next": "15.1.5",
+    "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^3.11.174",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

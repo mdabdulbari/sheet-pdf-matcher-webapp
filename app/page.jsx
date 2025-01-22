@@ -4,7 +4,6 @@ import { Box, Button, Grid2 as Grid, Paper } from "@mui/material";
 import SpreadsheetViewer from "./components/SpreadsheetViewer";
 import PdfViewer from "./components/PdfViewer";
 import Header from "./components/Header";
-import { normalizeValue } from "@/utils/helpers";
 
 const FileUploadPage = () => {
 	const [spreadsheetData, setSpreadsheetData] = useState([]);
@@ -20,10 +19,7 @@ const FileUploadPage = () => {
 		if (hoverRowId && matchedData) {
 			const matchedRow = matchedData.find((row) => row.id === hoverRowId);
 			if (matchedRow) {
-				const description = normalizeValue(
-					matchedRow.pdfData.description
-				);
-				setSearchTerm(description);
+				setSearchTerm(matchedRow.pdfData.description);
 			}
 		} else {
 			setSearchTerm("");
@@ -173,7 +169,6 @@ const FileUploadPage = () => {
 					>
 						<PdfViewer
 							searchTerm={searchTerm}
-							setSearchTerm={setSearchTerm}
 							pdfData={pdfData}
 							setPdfData={setPdfData}
 						/>

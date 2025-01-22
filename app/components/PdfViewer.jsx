@@ -1,59 +1,71 @@
 "use client";
-import React, { useState } from "react";
-import { Worker, Viewer } from "@react-pdf-viewer/core";
-import { getDocument } from "pdfjs-dist";
-import "@react-pdf-viewer/core/lib/styles/index.css";
-import { Button, TextField, Typography } from "@mui/material";
+import React, { useEffect, useRef, useState } from "react";
+import { PDFDocument } from "pdf-lib";
+import * as pdfjsLib from "pdfjs-dist";
+import { Button, Typography } from "@mui/material";
 
-const PdfViewer = ({ searchTerm, setSearchTerm, pdfData, setPdfData }) => {
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+const PdfViewer = ({ searchTerm, pdfData, setPdfData }) => {
 	const [pdfFile, setPdfFile] = useState(null);
-	//   // Text Extraction
-	//   const handlePdfUpload = async (e) => {
-	//     const file = e.target.files[0];
-	//     if (file) {
-	//       const fileUrl = URL.createObjectURL(file);
-	//       setPdfFile(fileUrl);
+	const [pdfBuffer, setPdfBuffer] = useState(null);
+	const canvasRef = useRef(null);
 
-	//       // Parse the PDF and log its content
-	//       const pdf = await getDocument(fileUrl).promise;
-	//       let fullText = "";
+	const handleSearch = () => {
+		const isFound = pdfData.some((row) => {
+			return Object.values(row).some((value) => {
+				return (
+					typeof value === "string" &&
+					value.toLowerCase().includes(searchTerm.toLowerCase())
+				);
+			});
+		});
+		console.log(`Search Result: ${isFound ? "Found" : "Not Found"}`);
+	};
 
-	//       for (let i = 0; i < pdf.numPages; i++) {
-	//         const page = await pdf.getPage(i + 1);
-	//         const textContent = await page.getTextContent();
+	useEffect(() => {
+		if (pdfData && searchTerm && searchTerm !== "") {
+			handleSearch();
+		}
+	}, [searchTerm]);
 
-	//         // Group text items by their Y-coordinate (line by line)
-	//         const lines = {};
-	//         textContent.items.forEach((item) => {
-	//           const y = item.transform[5]; // Y-coordinate
-	//           if (!lines[y]) {
-	//             lines[y] = [];
-	//           }
-	//           lines[y].push(item.str);
-	//         });
+	useEffect(() => {
+		const renderPDF = async () => {
+			if (!pdfBuffer) return;
 
-	//         // Convert the lines object into an array sorted by Y-coordinate
-	//         const sortedLines = Object.keys(lines)
-	//           .sort((a, b) => b - a) // Sort lines by Y-coordinate descending (top to bottom)
-	//           .map((y) => lines[y].join(" ")); // Join all items in the same line
+			try {
+				const pdfjsDoc = await pdfjsLib.getDocument({ data: pdfBuffer })
+					.promise;
 
-	//         // Combine all lines for the current page
-	//         fullText += `Page ${i + 1}:\n${sortedLines.join("\n")}\n\n`;
-	//       }
+				// Render the first page on the canvas
+				const page = await pdfjsDoc.getPage(1);
+				const viewport = page.getViewport({ scale: 1.5 });
+				const canvas = canvasRef.current;
+				const context = canvas.getContext("2d");
+				canvas.width = viewport.width;
+				canvas.height = viewport.height;
 
-	//       setParsedContent(fullText);
-	//       console.log("Parsed PDF Content Line by Line:\n", fullText);
-	//     }
-	//   };
+				await page.render({
+					canvasContext: context,
+					viewport,
+				}).promise;
+			} catch (error) {
+				console.error("Error rendering PDF:", error);
+			}
+		};
 
-	// Table Array Extraction line by line
+		renderPDF();
+	}, [pdfBuffer]);
+
 	const handlePdfUpload = async (e) => {
 		const file = e.target.files[0];
 		if (file) {
+			const fileBuffer = await file.arrayBuffer();
 			const fileUrl = URL.createObjectURL(file);
 			setPdfFile(fileUrl);
+			setPdfBuffer(fileBuffer);
 
-			const pdf = await getDocument(fileUrl).promise;
+			const pdf = await pdfjsLib.getDocument(fileUrl).promise;
 			let extractedTables = [];
 
 			for (let i = 0; i < pdf.numPages; i++) {
@@ -122,66 +134,13 @@ const PdfViewer = ({ searchTerm, setSearchTerm, pdfData, setPdfData }) => {
 		}
 	};
 
-	//   const handleSearch = () => {
-	//     if (searchTerm.trim()) {
-	//       console.log(`Searching for: ${searchTerm}`);
-	//       if (parsedContent) {
-	//         const occurrences =
-	//           parsedContent.match(new RegExp(searchTerm, "gi")) || [];
-	//         console.log(
-	//           `Found ${occurrences.length} occurrence(s) of "${searchTerm}"`
-	//         );
-	//       } else {
-	//         console.log("No parsed content to search within.");
-	//       }
-	//     }
-	//   };
-
-	const handleSearch = () => {
-		if (searchTerm.trim()) {
-			if (pdfData && Array.isArray(pdfData)) {
-				let totalOccurrences = 0;
-
-				pdfData.forEach((page) => {
-					page.table.forEach((row, rowIndex) => {
-						row.forEach((cell, columnIndex) => {
-							if (
-								cell
-									.toLowerCase()
-									.includes(searchTerm.toLowerCase())
-							) {
-								totalOccurrences++;
-							}
-						});
-					});
-				});
-			}
-		}
-	};
-
 	return (
 		<>
 			{pdfFile ? (
-				<>
-					<TextField
-						label="Search Text"
-						variant="outlined"
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						sx={{ mr: 2 }}
-					/>
-					<Button
-						variant="contained"
-						color="primary"
-						onClick={handleSearch}
-						disabled={!pdfFile}
-					>
-						Search
-					</Button>
-					<Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-						<Viewer fileUrl={pdfFile} />
-					</Worker>
-				</>
+				<canvas
+					ref={canvasRef}
+					style={{ border: "1px solid #ccc", marginTop: "16px" }}
+				/>
 			) : (
 				<>
 					<Typography variant="h6" gutterBottom>
