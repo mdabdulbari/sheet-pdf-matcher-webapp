@@ -21,14 +21,9 @@ export const parseSpreadsheet = async (file) => {
 					return;
 				}
 
-				const { headers, dataRows } = processData(
-					rawSheetData,
-					headerRowIndex
-				);
-				const cols = generateColumns(headers);
-				const formattedRows = formatRows(headers, dataRows);
+				const rows = processData(rawSheetData, headerRowIndex);
 
-				resolve({ cols, formattedRows });
+				resolve(rows);
 			} catch (error) {
 				reject(
 					"Failed to parse the Spreadsheet. Please check its format."
@@ -66,7 +61,15 @@ const processData = (rawSheetData, headerRowIndex) => {
 				)
 		);
 
-	return { headers, dataRows };
+	const formattedRows = dataRows.map((row, rowIndex) => {
+		const rowObject = headers.reduce((acc, header, index) => {
+			acc[header] = row[index] || null;
+			return acc;
+		}, {});
+		return { id: rowIndex + 1, ...rowObject };
+	});
+
+	return formattedRows;
 };
 
 const generateColumns = (headers) => {
@@ -75,14 +78,4 @@ const generateColumns = (headers) => {
 		name: col,
 		editable: true,
 	}));
-};
-
-const formatRows = (headers, dataRows) => {
-	return dataRows.map((row, rowIndex) => {
-		const rowObject = {};
-		headers.forEach((header, colIndex) => {
-			rowObject[`col_${colIndex}`] = row[colIndex] || null;
-		});
-		return { id: rowIndex + 1, ...rowObject };
-	});
 };

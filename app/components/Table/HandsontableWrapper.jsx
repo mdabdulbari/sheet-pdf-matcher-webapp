@@ -2,17 +2,20 @@ import React, { useRef, useEffect } from "react";
 import Handsontable from "handsontable";
 import "handsontable/dist/handsontable.full.css";
 
-const HandsontableWrapper = ({ data, columns }) => {
+const HandsontableWrapper = ({ data }) => {
 	const tableRef = useRef(null);
 	const hotInstance = useRef(null);
 
 	useEffect(() => {
 		if (tableRef.current) {
+			const filteredData = data.map((row) => {
+				const { id, ...rest } = row;
+				return rest;
+			});
 			hotInstance.current = new Handsontable(tableRef.current, {
-				data,
-				colHeaders: columns.map((col) => col.name),
+				data: filteredData,
+				colHeaders: Object.keys(filteredData[0]),
 				rowHeaders: true,
-				columns,
 				licenseKey: "non-commercial-and-evaluation",
 			});
 		}
@@ -20,7 +23,7 @@ const HandsontableWrapper = ({ data, columns }) => {
 		return () => {
 			hotInstance.current?.destroy();
 		};
-	}, [data, columns]);
+	}, [data]);
 
 	return <div ref={tableRef}></div>;
 };
