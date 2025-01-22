@@ -3,9 +3,26 @@ import Handsontable from "handsontable";
 import "handsontable/dist/handsontable.full.css";
 import _ from "lodash";
 
-const HandsontableWrapper = ({ data, setHoverRowId }) => {
+const HandsontableWrapper = ({
+	data,
+	setHoverRowId,
+	downloadSheet,
+	setDownloadSheet,
+	fileName,
+}) => {
 	const tableRef = useRef(null);
 	const hotInstance = useRef(null);
+
+	useEffect(() => {
+		if (hotInstance.current && downloadSheet) {
+			hotInstance.current.getPlugin("exportFile").downloadFile("csv", {
+				filename: `${fileName}-matched`,
+				columnHeaders: true,
+				rowHeaders: true,
+			});
+			setDownloadSheet(false);
+		}
+	}, [downloadSheet]);
 
 	const debouncedHover = _.debounce((event, coords, TD) => {
 		if (coords.row >= 0) {

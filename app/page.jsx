@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Box, Grid2 as Grid, Paper } from "@mui/material";
+import { Box, Button, Grid2 as Grid, Paper } from "@mui/material";
 import SpreadsheetViewer from "./components/SpreadsheetViewer";
 import PdfViewer from "./components/PdfViewer";
 import Header from "./components/Header";
@@ -12,6 +12,7 @@ const FileUploadPage = () => {
 	const [matchedData, setMatchedData] = useState(null);
 	const [hoverRowId, setHoverRowId] = useState(null);
 	const [searchTerm, setSearchTerm] = useState("");
+	const [downloadSheet, setDownloadSheet] = useState(false);
 
 	const normalizeNumber = (value) => Math.floor(value);
 
@@ -147,10 +148,17 @@ const FileUploadPage = () => {
 							boxSizing: "border-box",
 						}}
 					>
+						{spreadsheetData.length !== 0 && (
+							<Button onClick={() => setDownloadSheet(true)}>
+								Download Sheet
+							</Button>
+						)}
 						<SpreadsheetViewer
 							spreadsheetData={spreadsheetData}
 							setSpreadsheetData={setSpreadsheetData}
 							setHoverRowId={setHoverRowId}
+							downloadSheet={downloadSheet}
+							setDownloadSheet={setDownloadSheet}
 						/>
 					</Paper>
 				</Grid>

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { Button, Typography } from "@mui/material";
 import { parseSpreadsheet } from "@/utils/spreadsheetUtils";
 import HandsontableWrapper from "./Table/HandsontableWrapper";
@@ -8,10 +8,15 @@ const SpreadsheetViewer = ({
 	spreadsheetData,
 	setSpreadsheetData,
 	setHoverRowId,
+	downloadSheet,
+	setDownloadSheet,
 }) => {
+	const [fileName, setFilename] = useState("");
+
 	const handleFileSelection = (e) => {
 		const file = e.target.files[0];
 		if (file) {
+			setFilename(file.name);
 			handleFileReading(file);
 		} else {
 			alert("No file selected.");
@@ -39,6 +44,9 @@ const SpreadsheetViewer = ({
 				<HandsontableWrapper
 					data={spreadsheetData}
 					setHoverRowId={setHoverRowId}
+					downloadSheet={downloadSheet}
+					setDownloadSheet={setDownloadSheet}
+					fileName={fileName}
 				/>
 			) : (
 				<>
