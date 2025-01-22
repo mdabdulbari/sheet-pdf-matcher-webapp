@@ -18,8 +18,12 @@ const FileUploadPage = () => {
 	useEffect(() => {
 		if (hoverRowId && matchedData) {
 			const matchedRow = matchedData.find((row) => row.id === hoverRowId);
-			const description = normalizeValue(matchedRow.pdfData.description);
-			setSearchTerm(description);
+			if (matchedRow) {
+				const description = normalizeValue(
+					matchedRow.pdfData.description
+				);
+				setSearchTerm(description);
+			}
 		}
 	}, [hoverRowId]);
 
@@ -99,12 +103,24 @@ const FileUploadPage = () => {
 			.filter(Boolean); // Filter out null values, keeping only matched records
 	};
 
-	// Main useEffect hook
 	useEffect(() => {
 		if (!matchedData && spreadsheetData.length !== 0 && pdfData) {
 			const matched = findMatchedData(spreadsheetData, pdfData);
 			if (matched.length) {
 				setMatchedData(matched);
+
+				const updatedSpreadsheetData = spreadsheetData.map((row) => {
+					if (
+						matched.some((matchedRow) => matchedRow.id === row.id)
+					) {
+						const updatedRow = { ...row };
+						updatedRow["Match Status"] = "Matched";
+						return updatedRow;
+					}
+					return row;
+				});
+
+				setSpreadsheetData(updatedSpreadsheetData);
 			}
 		}
 	}, [spreadsheetData, pdfData]);

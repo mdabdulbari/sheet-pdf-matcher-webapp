@@ -51,6 +51,11 @@ const processData = (rawSheetData, headerRowIndex) => {
 		header && header.trim() ? header.trim() : `Column ${index + 1}`
 	);
 
+	// Add 'Match Status' to the headers if not present
+	if (!headers.includes("Match Status")) {
+		headers.push("Match Status");
+	}
+
 	const dataRows = rawSheetData
 		.slice(headerRowIndex + 1)
 		.filter(
@@ -66,6 +71,11 @@ const processData = (rawSheetData, headerRowIndex) => {
 			acc[header] = row[index] || null;
 			return acc;
 		}, {});
+
+		if (!rowObject["Match Status"]) {
+			rowObject["Match Status"] = "";
+		}
+
 		return { id: rowIndex + 1, ...rowObject };
 	});
 
