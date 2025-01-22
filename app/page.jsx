@@ -24,6 +24,8 @@ const FileUploadPage = () => {
 				);
 				setSearchTerm(description);
 			}
+		} else {
+			setSearchTerm("");
 		}
 	}, [hoverRowId]);
 

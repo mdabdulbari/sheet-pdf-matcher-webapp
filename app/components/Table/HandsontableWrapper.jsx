@@ -41,7 +41,8 @@ const HandsontableWrapper = ({ data, setHoverRowId }) => {
 									colIndex
 								);
 								if (cell) {
-									cell.style.backgroundColor = ""; // Reset the background color
+									cell.style.backgroundColor = "";
+									setHoverRowId(null);
 								}
 							});
 					}, 100); // 100ms delay
