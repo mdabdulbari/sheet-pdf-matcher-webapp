@@ -1,4 +1,5 @@
 import { sortRowsByY } from "./helpers";
+import * as pdfjsLib from "pdfjs-dist";
 
 export const drawCheckmarksOnCanvas = (matchedData, viewport, canvas) => {
   const rowsToMark = matchedData.map((data) => data.pdfData.lastItemTransform);
@@ -129,7 +130,7 @@ const structureTable = (table, pageNum) => {
         updatedCurrentTransform[4] = updatedCurrentTransform[4] + width;
         lastItemTransform = updatedCurrentTransform;
       }
-      // Process the data as needed
+
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
         date = str;
       } else if (/^\d{1,3}(?:,\d{3})*(?:\.\d{2})$/.test(str)) {
@@ -175,7 +176,7 @@ export const getMouseCoordinates = (e, canvas) => {
   return { x, y };
 };
 
-// Function to handle drawing
+
 export const handleDrawing = (context, x, y, tool) => {
   context.lineWidth = 2;
 
@@ -199,7 +200,40 @@ export const handleDrawing = (context, x, y, tool) => {
   }
 };
 
-// Function to handle eraser functionality
+
 export const handleEraser = (context, x, y, size = 20) => {
   context.clearRect(x - size / 2, y - size / 2, size, size);
+};
+
+// Function to render the PDF onto a canvas
+export const renderPdfPage = async (pdfBuffer, pageIndex = 1, scale = 1.5) => {
+  try {
+    const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
+    const page = await pdfDoc.getPage(pageIndex);
+    const viewport = page.getViewport({ scale });
+
+    return { page, viewport };
+  } catch (error) {
+    console.error("Error rendering PDF:", error);
+    throw error;
+  }
+};
+
+// Function to set the canvas dimensions
+export const setCanvasSize = (canvas, viewport) => {
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+};
+
+// Function to render page onto a canvas context
+export const renderPageToCanvas = async (page, canvasContext, viewport) => {
+  try {
+    await page.render({
+      canvasContext,
+      viewport,
+    }).promise;
+  } catch (error) {
+    console.error("Error rendering page to canvas:", error);
+    throw error;
+  }
 };

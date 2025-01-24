@@ -5,6 +5,9 @@ import {
   drawCheckmarksOnCanvas,
   highlightTermOnCanvas,
   removeHighlightedTermFromCanvas,
+  renderPageToCanvas,
+  renderPdfPage,
+  setCanvasSize,
 } from "@/utils/canvasUtils";
 import Toolbar from "./Toolbar";
 import PdfFileUpload from "./PdfFileUpload";
@@ -64,25 +67,17 @@ const PdfViewer = ({ itemToHighlight, pdfData, setPdfData, matchedData }) => {
       if (!pdfBuffer) return;
 
       try {
-        const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
-        const page = await pdfDoc.getPage(1);
-        const viewport = page.getViewport({ scale: 1.5 });
+        const { page, viewport } = await renderPdfPage(pdfBuffer);
         setViewport(viewport);
 
         const pdfCanvas = pdfCanvasRef.current;
         const pdfContext = pdfCanvas.getContext("2d");
-        pdfCanvas.width = viewport.width;
-        pdfCanvas.height = viewport.height;
+        setCanvasSize(pdfCanvas, viewport);
 
-        await page.render({
-          canvasContext: pdfContext,
-          viewport,
-        }).promise;
+        await renderPageToCanvas(page, pdfContext, viewport);
 
-        // Set the annotation canvas size to match the PDF canvas
         const annotationCanvas = annotationCanvasRef.current;
-        annotationCanvas.width = pdfCanvas.width;
-        annotationCanvas.height = pdfCanvas.height;
+        setCanvasSize(annotationCanvas, viewport);
       } catch (error) {
         console.error("Error rendering PDF:", error);
       }
@@ -103,7 +98,6 @@ const PdfViewer = ({ itemToHighlight, pdfData, setPdfData, matchedData }) => {
       )}
       {pdfFile && (
         <div style={{ position: "relative" }}>
-          {/* PDF Canvas */}
           <canvas
             ref={pdfCanvasRef}
             style={{
