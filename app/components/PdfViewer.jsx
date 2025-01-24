@@ -3,41 +3,106 @@ import React, { useEffect, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { Button, Typography, Box, IconButton } from "@mui/material";
 import BrushIcon from "@mui/icons-material/Brush";
-import ColorLensIcon from "@mui/icons-material/ColorLens";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import { jsPDF } from "jspdf";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
+const PdfViewer = ({ itemToHighlight, pdfData, setPdfData, matchedData }) => {
   const [pdfBuffer, setPdfBuffer] = useState(null);
   const [pdfFile, setPdfFile] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("Web Payment WIRE5120906114"); // Default search term
-  const pdfCanvasRef = useRef(null); // PDF rendering canvas
-  const annotationCanvasRef = useRef(null); // Annotation canvas
+  const pdfCanvasRef = useRef(null);
+  const annotationCanvasRef = useRef(null);
   const [activeTool, setActiveTool] = useState(null);
+  const [savedViewport, setViewport] = useState(null);
+  const [oldItemToHighlight, setOldItemToHighlight] = useState(null);
 
-  //   let searchTerm = searchTermRAW;
-  //   console.log("searchTerm", searchTerm);
-
-  const handleSearch = () => {
-    const isFound = pdfData.some((row) => {
-      return Object.values(row).some((value) => {
-        return (
-          typeof value === "string" &&
-          value.toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => {
+    if (matchedData) {
+      setTimeout(() => {
+        const rowsToMark = matchedData.map(
+          (data) => data.pdfData.lastItemTransform
         );
-      });
-    });
-    console.log(`Search Result: ${isFound ? "Found" : "Not Found"}`);
+        const annotationCanvas = annotationCanvasRef.current;
+        const context = annotationCanvas.getContext("2d");
+
+        context.fillStyle = "rgba(0, 0, 0, 0)";
+        context.strokeStyle = "green";
+        context.lineWidth = 2;
+
+        rowsToMark.forEach((transform) => {
+          const currentTransform = pdfjsLib.Util.transform(
+            savedViewport.transform,
+            transform
+          );
+
+          // Coordinates for the checkmark
+          const x = currentTransform[4] + 10;
+          const y = currentTransform[5] - 12;
+
+          // Draw checkmark
+          context.beginPath();
+          context.moveTo(x, y);
+          context.lineTo(x + 5, y + 7);
+          context.lineTo(x + 15, y - 3);
+          context.stroke();
+        });
+      }, 100);
+    }
+  }, [matchedData]);
+
+  const highlightSearchTerm = async () => {
+    removeHighlight();
+    const annotationCanvas = annotationCanvasRef.current;
+    const context = annotationCanvas.getContext("2d");
+
+    const transform = pdfjsLib.Util.transform(
+      savedViewport.transform,
+      itemToHighlight.transform
+    );
+    const x = transform[4];
+    const y = transform[5] - 12;
+    const width = itemToHighlight.width * savedViewport.scale;
+    const height = 12;
+
+    context.fillStyle = "rgba(255, 255, 0, 0.4)";
+    context.fillRect(x, y, width, height);
+
+    setOldItemToHighlight(itemToHighlight);
+  };
+
+  const removeHighlight = () => {
+    if (oldItemToHighlight) {
+      const annotationCanvas = annotationCanvasRef.current;
+      const context = annotationCanvas.getContext("2d");
+
+      const transform = pdfjsLib.Util.transform(
+        savedViewport.transform,
+        oldItemToHighlight.transform
+      );
+      const x = transform[4];
+      const y = transform[5] - 12;
+      const width = oldItemToHighlight.width * savedViewport.scale;
+      const height = 12;
+
+      context.clearRect(x, y, width, height);
+      setOldItemToHighlight(null);
+    }
   };
 
   useEffect(() => {
-    if (pdfData && searchTerm && searchTerm !== "") {
-      handleSearch();
+    if (
+      pdfData &&
+      itemToHighlight.description &&
+      itemToHighlight.description !== ""
+    ) {
+      setOldItemToHighlight(itemToHighlight);
+      highlightSearchTerm();
+    } else {
+      removeHighlight();
     }
-  }, [searchTerm]);
+  }, [itemToHighlight]);
 
   useEffect(() => {
     const renderPDF = async () => {
@@ -47,22 +112,17 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
         const pdfDoc = await pdfjsLib.getDocument({ data: pdfBuffer }).promise;
         const page = await pdfDoc.getPage(1);
         const viewport = page.getViewport({ scale: 1.5 });
+        setViewport(viewport);
 
         const pdfCanvas = pdfCanvasRef.current;
         const pdfContext = pdfCanvas.getContext("2d");
         pdfCanvas.width = viewport.width;
         pdfCanvas.height = viewport.height;
 
-        // Render the PDF page
         await page.render({
           canvasContext: pdfContext,
           viewport,
         }).promise;
-
-        // Highlight the search term
-        if (searchTerm) {
-          highlightSearchTerm(page, searchTerm, pdfContext, viewport);
-        }
 
         // Set the annotation canvas size to match the PDF canvas
         const annotationCanvas = annotationCanvasRef.current;
@@ -73,34 +133,8 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
       }
     };
 
-    const highlightSearchTerm = async (page, term, context, viewport) => {
-      const textContent = await page.getTextContent();
-      const matches = [];
-
-      textContent.items.forEach((item) => {
-        if (item.str.toLowerCase().includes(term.toLowerCase())) {
-          const transform = pdfjsLib.Util.transform(
-            viewport.transform,
-            item.transform
-          );
-          const x = transform[4];
-          const y = transform[5] - 10; // Adjust height for highlight
-          const width = item.width * viewport.scale;
-          const height = 10; // Approximate height
-
-          matches.push({ x, y, width, height });
-        }
-      });
-
-      // Draw highlights
-      context.fillStyle = "rgba(255, 255, 0, 0.4)"; // Search term highlight color
-      matches.forEach(({ x, y, width, height }) => {
-        context.fillRect(x, y, width, height);
-      });
-    };
-
     renderPDF();
-  }, [pdfBuffer, searchTerm]);
+  }, [pdfBuffer]);
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -119,22 +153,41 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
 
         const rows = {};
         textContent.items.forEach((item) => {
-          const y = item.transform[5];
+          const y = item.transform[5]; // Use the original y-coordinate from the item's transform
+
           if (!rows[y]) {
-            rows[y] = [];
+            rows[y] = {
+              items: [],
+            };
           }
-          rows[y].push(item);
+
+          // Push the item into the row
+          rows[y].items.push({
+            str: item.str,
+            transform: item.transform,
+            width: item.width,
+          });
         });
 
         const sortedRows = Object.keys(rows)
           .sort((a, b) => b - a)
-          .map((y) => rows[y]);
+          .map((y) => ({
+            items: rows[y].items
+              .sort((a, b) => a.transform[4] - b.transform[4]) // Sort items by x-coordinate
+              .map(({ str, width, transform }) => ({
+                str,
+                width,
+                transform,
+              })),
+          }));
 
-        const table = sortedRows.map((rowItems) => {
-          return rowItems
-            .sort((a, b) => a.transform[4] - b.transform[4])
-            .map((item) => item.str);
-        });
+        const table = sortedRows.map((row) => ({
+          items: row.items.map(({ str, width, transform }) => ({
+            str,
+            width,
+            transform,
+          })),
+        }));
 
         const structuredTable = table.map((row) => {
           let date = "";
@@ -142,23 +195,40 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
           let debit = "";
           let balance = "";
           let description = [];
+          let totalWidth = 0;
+          let transform = [];
+          let lastItemTransform = [];
 
-          row.forEach((item) => {
-            // Check if the item matches a date format (MM/DD/YYYY)
-            if (/^\d{2}\/\d{2}\/\d{4}$/.test(item)) {
-              date = item;
-            }
-            // Check if the item matches a credit/debit/balance format
-            else if (/^\d{1,3}(?:,\d{3})*(?:\.\d{2})$/.test(item)) {
-              if (credit === "") {
-                credit = item;
-              } else {
-                balance = item;
+          row.items.forEach(
+            ({ str, width, transform: currentTransform }, index) => {
+              const isLastItem = index === row.items.length - 1;
+              if (isLastItem) {
+                const updatedCurrentTransform = [...currentTransform];
+                updatedCurrentTransform[4] = updatedCurrentTransform[4] + width;
+                lastItemTransform = updatedCurrentTransform;
               }
-            } else {
-              description.push(item);
+              // Check if the item matches a date format (MM/DD/YYYY)
+              if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+                date = str;
+              }
+              // Check if the item matches a credit/debit/balance format
+              else if (/^\d{1,3}(?:,\d{3})*(?:\.\d{2})$/.test(str)) {
+                if (credit === "") {
+                  credit = str;
+                } else {
+                  balance = str;
+                }
+              } else {
+                description.push(str);
+                if (str !== " ") {
+                  totalWidth += width;
+                }
+                if (transform.length === 0 && str !== " " && str !== "") {
+                  transform = currentTransform;
+                }
+              }
             }
-          });
+          );
 
           description = description.join(" ").trim();
 
@@ -169,6 +239,9 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
             debit: debit,
             balance: balance,
             page: i + 1,
+            transform: transform,
+            width: totalWidth,
+            lastItemTransform,
           };
         });
 
@@ -201,8 +274,9 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
 
   const handleCanvasMouseDown = (e) => {
     if (
-      activeTool === "draw" ||
-      activeTool === "drawVariant" ||
+      activeTool === "blue" ||
+      activeTool === "green" ||
+      activeTool === "red" ||
       activeTool === "eraser"
     ) {
       const annotationCanvas = annotationCanvasRef.current;
@@ -215,7 +289,7 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
       const y = (e.clientY - rect.top) * scaleY;
 
       if (activeTool === "eraser") {
-        context.clearRect(x - 10, y - 10, 20, 20); // Eraser size: 20x20
+        context.clearRect(x - 50, y - 50, 100, 100); // Eraser size: 100x100
       } else {
         context.beginPath();
         context.moveTo(x, y);
@@ -235,18 +309,23 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    if (activeTool === "draw") {
+    if (activeTool === "red") {
       context.strokeStyle = "red";
       context.lineWidth = 2;
       context.lineTo(x, y);
       context.stroke();
-    } else if (activeTool === "drawVariant") {
-      context.strokeStyle = "rgba(255, 255, 0, 0.6)";
-      context.lineWidth = 8;
+    } else if (activeTool === "blue") {
+      context.strokeStyle = "blue";
+      context.lineWidth = 2;
+      context.lineTo(x, y);
+      context.stroke();
+    } else if (activeTool === "green") {
+      context.strokeStyle = "green";
+      context.lineWidth = 2;
       context.lineTo(x, y);
       context.stroke();
     } else if (activeTool === "eraser") {
-      context.clearRect(x - 10, y - 10, 20, 20); // Eraser size: 20x20
+      context.clearRect(x - 10, y - 10, 20, 20);
     }
   };
 
@@ -261,8 +340,8 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
         <Box
           sx={{
             position: "fixed",
-            top: "100px",
-            left: "1600px",
+            top: 80,
+            right: 20,
             background: "#fff",
             boxShadow: 2,
             padding: "8px",
@@ -272,23 +351,30 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
             gap: "8px",
           }}
         >
-          {/* Original Draw Tool */}
           <IconButton
-            color={activeTool === "draw" ? "primary" : "default"}
-            onClick={() => setActiveTool("draw")}
+            color={activeTool === "red" ? "primary" : "default"}
+            onClick={() => setActiveTool("red")}
           >
-            <BrushIcon />
+            <BrushIcon style={{ color: "red" }} />
           </IconButton>
 
-          {/* New Draw Variant Tool */}
+          {/* Blue Pen */}
           <IconButton
-            color={activeTool === "drawVariant" ? "primary" : "default"}
-            onClick={() => setActiveTool("drawVariant")}
+            color={activeTool === "blue" ? "primary" : "default"}
+            onClick={() => setActiveTool("blue")}
           >
-            <ColorLensIcon style={{ color: "rgba(229, 255, 0, 0.99)" }} />
+            <BrushIcon style={{ color: "blue" }} />
           </IconButton>
 
-          {/* Eraser Tool */}
+          {/* Green Pen */}
+          <IconButton
+            color={activeTool === "green" ? "primary" : "default"}
+            onClick={() => setActiveTool("green")}
+          >
+            <BrushIcon style={{ color: "green" }} />
+          </IconButton>
+
+          {/* Eraser */}
           <IconButton
             color={activeTool === "eraser" ? "primary" : "default"}
             onClick={() => setActiveTool("eraser")}
@@ -310,7 +396,13 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
           {/* PDF Canvas */}
           <canvas
             ref={pdfCanvasRef}
-            style={{ position: "absolute", zIndex: 1 }}
+            style={{
+              position: "absolute",
+              zIndex: 1,
+              border: "1px solid #ccc",
+              width: "100%",
+              height: "auto",
+            }}
           />
 
           {/* Annotation Canvas */}
@@ -322,7 +414,6 @@ const PdfViewer = ({ searchTermXYZ, pdfData, setPdfData }) => {
               border: "1px solid #ccc",
               width: "100%",
               height: "auto",
-              marginTop: "16px",
             }}
             onMouseDown={handleCanvasMouseDown}
             onMouseUp={handleCanvasMouseUp}
