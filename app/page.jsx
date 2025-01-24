@@ -4,6 +4,7 @@ import { Box, Button, Grid2 as Grid, Paper } from "@mui/material";
 import SpreadsheetViewer from "./components/SpreadsheetViewer";
 import PdfViewer from "./components/PdfViewer";
 import Header from "./components/Header";
+import { getSimilarityScore, isSimilar } from "@/utils/helpers";
 
 const FileUploadPage = () => {
   const [spreadsheetData, setSpreadsheetData] = useState([]);
@@ -68,24 +69,34 @@ const FileUploadPage = () => {
     return spreadsheetData
       .map((spreadsheetRecord) => {
         // Find a matching pdfRecord based on your conditions
-        const matchedPdfRecord = pdfData.find((pdfRecord) => {
-          const balanceMatch = compareBalances(
-            spreadsheetRecord.balance,
-            pdfRecord.balance
-          );
-          const creditDebitMatch = compareCreditsDebits(
+        const matchedPdfRecords = pdfData.filter((pdfRecord) => {
+          return compareCreditsDebits(
             spreadsheetRecord.Credits,
             spreadsheetRecord.Debits,
             pdfRecord.credit
           );
-          return balanceMatch || creditDebitMatch;
         });
 
-        // If a match is found, return the combined object
-        if (matchedPdfRecord) {
+        // Find the one with the closest description match
+        let bestMatch = null;
+        let highestSimilarityScore = 0;
+
+        matchedPdfRecords.forEach((pdfRecord) => {
+          const similarityScore = getSimilarityScore(
+            spreadsheetRecord.Comment,
+            pdfRecord.description
+          );
+
+          if (similarityScore > highestSimilarityScore) {
+            highestSimilarityScore = similarityScore;
+            bestMatch = pdfRecord;
+          }
+        });
+
+        if (bestMatch) {
           return {
             ...spreadsheetRecord,
-            pdfData: { ...matchedPdfRecord },
+            pdfData: { ...bestMatch },
           };
         }
 
